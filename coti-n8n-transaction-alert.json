@@ -1,9 +1,9 @@
 {
-  "name": "TG-demo",
+  "name": "TG-demo-audited",
   "nodes": [
     {
       "parameters": {
-        "url": "https://mainnet.cotiscan.io/api/v2/addresses/0xAcfE0086C8d66FddDdaa288b86C61914b14CBD88/transactions",
+        "url": "https://mainnet.cotiscan.io/api/v2/addresses/YOUR_WALLET_ADDRESS/transactions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -45,16 +45,19 @@
     },
     {
       "parameters": {
-        "chatId": "YOUR CHAT_ID",
+        "chatId": "YOUR_CHAT_ID",
         "text": "={{ $json.message }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        784,
+        1104,
         48
       ],
+      "id": "bc90f85a-5ae0-4674-aeb6-66e140ea79d5",
+      "name": "Send a text message",
+      "webhookId": "13fc081c-4a59-4c72-9788-66fd2e729f81",
       "credentials": {
         "telegramApi": {
           "id": "",
@@ -64,7 +67,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Code Node: Filter New Transactions & Format for Telegram\n\n// Get the response from HTTP Request\nconst response = $input.first().json;\n\n// Get workflow static data to track seen transactions\nconst staticData = $getWorkflowStaticData('global');\n\n// Initialize if first run\nif (!staticData.seenTxHashes) {\n  staticData.seenTxHashes = [];\n}\n\n// Your wallet address to monitor\nconst MY_WALLET = 'YOUR WALLET ADDRESS'.toLowerCase();\n\n// Extract transactions from the response\nconst txList = response.items || [];\n\n// Find new transactions\nconst newTransactions = [];\n\nfor (const tx of txList) {\n  const txHash = tx.hash;\n  \n  // Skip if we've already seen this transaction\n  if (staticData.seenTxHashes.includes(txHash)) {\n    continue;\n  }\n  \n  // Check if transaction involves our wallet\n  const fromAddress = tx.from?.hash?.toLowerCase() || '';\n  const toAddress = tx.to?.hash?.toLowerCase() || '';\n  \n  if (fromAddress === MY_WALLET || toAddress === MY_WALLET) {\n    newTransactions.push(tx);\n    staticData.seenTxHashes.push(txHash);\n  }\n}\n\n// Keep only last 500 hashes to prevent memory bloat\nif (staticData.seenTxHashes.length > 500) {\n  staticData.seenTxHashes = staticData.seenTxHashes.slice(-500);\n}\n\n// If no new transactions, return flag to skip Telegram\nif (newTransactions.length === 0) {\n  return [{\n    json: {\n      hasNew: false\n    }\n  }];\n}\n\n// Format each new transaction for Telegram\nreturn newTransactions.map(tx => {\n  const fromAddress = tx.from?.hash || 'Unknown';\n  const toAddress = tx.to?.hash || 'Unknown';\n  const isIncoming = toAddress.toLowerCase() === MY_WALLET;\n  \n  // Convert value from Wei to COTI (18 decimals)\n  const valueWei = BigInt(tx.value || '0');\n  const valueCoti = Number(valueWei) / 1e18;\n  \n  // Format timestamp\n  const timestamp = new Date(tx.timestamp).toLocaleString('en-US', {\n    dateStyle: 'medium',\n    timeStyle: 'short'\n  });\n  \n  // Calculate fee in COTI\n  const feeWei = BigInt(tx.fee?.value || '0');\n  const feeCoti = Number(feeWei) / 1e18;\n  \n  // Build Telegram message\n  const emoji = isIncoming ? '📥' : '📤';\n  const direction = isIncoming ? 'INCOMING' : 'OUTGOING';\n  const statusEmoji = tx.status === 'ok' ? '✅' : '❌';\n  \n  const message = `${emoji} *${direction} TRANSACTION* ${statusEmoji}\n\n💰 *Amount:* \\`${valueCoti.toFixed(4)} COTI\\`\n📤 *From:* \\`${fromAddress.slice(0, 8)}...${fromAddress.slice(-6)}\\`\n📥 *To:* \\`${toAddress.slice(0, 8)}...${toAddress.slice(-6)}\\`\n🧱 *Block:* \\`${tx.block_number}\\`\n⛽ *Fee:* \\`${feeCoti.toFixed(6)} COTI\\`\n⏰ *Time:* ${timestamp}\n\n🔗 [View on CotiScan](https://explorer.coti.io/tx/${tx.hash})`;\n\n  return {\n    json: {\n      hasNew: true,\n      message: message,\n      txHash: tx.hash,\n      isIncoming: isIncoming,\n      amount: valueCoti,\n      status: tx.status\n    }\n  };\n});"
+        "jsCode": "// Code Node: Filter New Transactions & Format for Telegram\n\n// Get the response from HTTP Request\nconst response = $input.first().json;\n\n// Get workflow static data to track seen transactions\nconst staticData = $getWorkflowStaticData('global');\n\n// Initialize if first run\nif (!staticData.seenTxHashes) {\n  staticData.seenTxHashes = [];\n}\n\n// Your wallet address to monitor\nconst MY_WALLET = 'YOUR_WALLET_ADDRESS'.toLowerCase();\n\n// Extract transactions from the response\nconst txList = response.items || [];\n\n// Find new transactions\nconst newTransactions = [];\n\nfor (const tx of txList) {\n  const txHash = tx.hash;\n  \n  // Skip if we've already seen this transaction\n  if (staticData.seenTxHashes.includes(txHash)) {\n    continue;\n  }\n  \n  // Check if transaction involves our wallet\n  const fromAddress = tx.from?.hash?.toLowerCase() || '';\n  const toAddress = tx.to?.hash?.toLowerCase() || '';\n  \n  if (fromAddress === MY_WALLET || toAddress === MY_WALLET) {\n    newTransactions.push(tx);\n    staticData.seenTxHashes.push(txHash);\n  }\n}\n\n// Keep only last 500 hashes to prevent memory bloat\nif (staticData.seenTxHashes.length > 500) {\n  staticData.seenTxHashes = staticData.seenTxHashes.slice(-500);\n}\n\n// If no new transactions, return flag to skip Telegram\nif (newTransactions.length === 0) {\n  return [{\n    json: {\n      hasNew: false\n    }\n  }];\n}\n\n// Format each new transaction for Telegram\nreturn newTransactions.map(tx => {\n  const fromAddress = tx.from?.hash || 'Unknown';\n  const toAddress = tx.to?.hash || 'Unknown';\n  const isIncoming = toAddress.toLowerCase() === MY_WALLET;\n  \n  // Convert value from Wei to COTI (18 decimals)\n  const valueWei = BigInt(tx.value || '0');\n  const valueCoti = Number(valueWei) / 1e18;\n  \n  // Format timestamp\n  const timestamp = new Date(tx.timestamp).toLocaleString('en-US', {\n    dateStyle: 'medium',\n    timeStyle: 'short'\n  });\n  \n  // Calculate fee in COTI\n  const feeWei = BigInt(tx.fee?.value || '0');\n  const feeCoti = Number(feeWei) / 1e18;\n  \n  // Build Telegram message\n  const emoji = isIncoming ? '📥' : '📤';\n  const direction = isIncoming ? 'INCOMING' : 'OUTGOING';\n  const statusEmoji = tx.status === 'ok' ? '✅' : '❌';\n  \n  const message = `${emoji} *${direction} TRANSACTION* ${statusEmoji}\n\n💰 *Amount:* \\`${valueCoti.toFixed(4)} COTI\\`\n📤 *From:* \\`${fromAddress.slice(0, 8)}...${fromAddress.slice(-6)}\\`\n📥 *To:* \\`${toAddress.slice(0, 8)}...${toAddress.slice(-6)}\\`\n🧱 *Block:* \\`${tx.block_number}\\`\n⛽ *Fee:* \\`${feeCoti.toFixed(6)} COTI\\`\n⏰ *Time:* ${timestamp}\n\n🔗 [View on CotiScan](https://explorer.coti.io/tx/${tx.hash})`;\n\n  return {\n    json: {\n      hasNew: true,\n      message: message,\n      txHash: tx.hash,\n      isIncoming: isIncoming,\n      amount: valueCoti,\n      status: tx.status\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -107,6 +110,72 @@
       ],
       "id": "ef84d716-29eb-4804-8f87-85bd58689ee3",
       "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "coti-n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ $json.message }}",
+            "txHash": "={{ $json.txHash }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "txHash",
+              "displayName": "txHash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        864,
+        64
+      ],
+      "id": "c16eef8a-7d84-4fe8-a5a4-d7866119b364",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": ""
+        }
+      }
     }
   ],
   "pinData": {},
@@ -153,6 +222,17 @@
       "main": [
         [
           {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
             "node": "Send a text message",
             "type": "main",
             "index": 0
@@ -165,7 +245,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "82bfc09f-6b02-4b78-9f12-51485295987d",
+  "versionId": "e8df3055-e8d0-4325-a557-47345ae8e362",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "d526e999990f0e913e933b5f477cc22ebcb06977743652974f878a2f424468d2"
