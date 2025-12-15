@@ -56,7 +56,7 @@ Identifies new transactions involving your wallet
 Formats transaction data for Telegram output
 
 Use the following prompt to generate the JavaScript code:
-```
+
 ```
 Write n8n Code node JavaScript for tracking COTI blockchain transactions.
 
@@ -141,7 +141,7 @@ Connect this node to the IF node (true branch). It sends the notification.
 To obtain your Chat ID, message [@userinfobot](https://t.me/userinfobot) on Telegram.
 
 ## AI Prompt for Workflow Generation
-
+The prompt below has been tested with Claude, ChatGPT, and Google Gemini, you can find the result of each on this repository. Including the one use in the livestream.
 Use the following prompt with Claude or your preferred AI assistant to generate the Code node logic:
 
 ```
@@ -198,7 +198,7 @@ Important n8n JSON structure requirements:
 
 Replace `YOUR_WALLET_ADDRESS` with your actual COTI wallet address.
 
-## Sample Output
+## Sample Output (May be differ)
 
 When a new transaction is detected, you will receive a Telegram message in this format:
 
@@ -219,7 +219,7 @@ View on CotiScan: https://explorer.coti.io/tx/0x...
 
 - **Polling Interval**: Default is 5 minutes. Adjust based on your needs. (30 seconds is safe zone, lower than this could prevent you from spamming)
 - **Transaction History**: The workflow tracks the last 500 transactions to prevent memory issues.
-- **First Run**: On initial execution, all transactions in the API response will trigger notifications.
+- **First Run**: On initial execution, no transaction will be shown.
 
 ## Troubleshooting
 
@@ -229,6 +229,7 @@ View on CotiScan: https://explorer.coti.io/tx/0x...
 | Duplicate notifications | Clear workflow static data and restart |
 | Parse errors in Telegram | Ensure Parse Mode is set to MarkdownV2 |
 | Empty API response | Confirm wallet address is valid and has transactions |
+[ Execution Error on JavaScript Code Node | Copy the error and code into LLM and ask for solution |
 
 ## Resources
 
@@ -240,3 +241,4 @@ View on CotiScan: https://explorer.coti.io/tx/0x...
 ## License
 
 MIT License - Feel free to modify and distribute.
+
