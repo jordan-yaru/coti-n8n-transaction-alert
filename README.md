@@ -229,7 +229,7 @@ View on CotiScan: https://explorer.coti.io/tx/0x...
 | Duplicate notifications | Clear workflow static data and restart |
 | Parse errors in Telegram | Ensure Parse Mode is set to MarkdownV2 |
 | Empty API response | Confirm wallet address is valid and has transactions |
-[ Execution Error on JavaScript Code Node | Copy the error and code into LLM and ask for solution |
+| Execution Error on JavaScript Code Node | Copy the error and code into LLM and ask for solution |
 
 ## Resources
 
@@ -241,4 +241,5 @@ View on CotiScan: https://explorer.coti.io/tx/0x...
 ## License
 
 MIT License - Feel free to modify and distribute.
+
 
