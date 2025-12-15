@@ -1,4 +1,4 @@
-# COTI Blockchain Transaction Notifier
+# COTI Blockchain/n8n/Telegram Transaction Alert
 
 A lightweight n8n workflow that monitors COTI blockchain transactions and sends real-time notifications to Telegram.
 
@@ -241,5 +241,6 @@ View on CotiScan: https://explorer.coti.io/tx/0x...
 ## License
 
 MIT License - Feel free to modify and distribute.
+
 
 
