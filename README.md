@@ -57,24 +57,61 @@ Formats transaction data for Telegram output
 
 Use the following prompt to generate the JavaScript code:
 ```
-Write n8n Code node JavaScript that:
+```
+Write n8n Code node JavaScript for tracking COTI blockchain transactions.
 
-Input: HTTP response with structure [{ "items": [{ hash, value, from: { hash }, to: { hash }, status, block_number, timestamp, fee: { value } }] }]
+Input structure from HTTP Request node:
+[{
+    "items": [{
+        "hash": "0x...",
+        "value": "2000000000000000000",
+        "from": { "hash": "0x..." },
+        "to": { "hash": "0x..." },
+        "status": "ok",
+        "block_number": 4628668,
+        "timestamp": "2025-12-15T17:12:36.000000Z",
+        "fee": { "value": "42000000147000" }
+    }]
+}]
 
-Requirements:
-- Use $input.first().json to get response
-- Use $getWorkflowStaticData('global') to track seen transaction hashes
-- Initialize seenTxHashes array if not exists
-- Loop through items, skip if hash exists in seenTxHashes
-- Check if transaction involves wallet: YOUR_WALLET_ADDRESS
-- Add new hashes to seenTxHashes (keep last 500 max)
-- If no new transactions, return [{ json: { hasNew: false } }]
-- For new transactions, return array with each item containing:
-  - hasNew: true
-  - message: formatted string with direction (incoming/outgoing), amount (convert from Wei, 18 decimals), truncated addresses, block_number, fee in COTI, timestamp, explorer link (https://explorer.coti.io/tx/{hash})
-  - txHash, isIncoming, amount, status fields
+Wallet to monitor: YOUR_WALLET_ADDRESS
 
-Output must work with IF node checking: $json.hasNew equals true
+Required behavior:
+1. Get response using: const response = $input.first().json;
+2. Get static data using: const staticData = $getWorkflowStaticData('global');
+3. Check if first run: if seenTxHashes does not exist, initialize it, store ALL current transaction hashes, then return [{ json: { hasNew: false } }] immediately (silent initialization)
+4. For subsequent runs: find transactions not in seenTxHashes that involve the wallet
+5. Update seenTxHashes with new hashes (limit to last 500)
+6. If no new transactions: return [{ json: { hasNew: false } }]
+7. For each new transaction, return object with:
+   - hasNew: true
+   - message: formatted Telegram message
+   - txHash: transaction hash
+   - isIncoming: boolean
+   - amount: number in COTI
+   - status: transaction status
+
+Message format (use template literal with backticks):
+- Line 1: Direction emoji and text (incoming or outgoing) + status emoji
+- Line 2: Amount in COTI (convert from Wei by dividing by 1e18)
+- Line 3: From address (first 8 chars + ... + last 6 chars)
+- Line 4: To address (truncated same way)
+- Line 5: Block number
+- Line 6: Fee in COTI
+- Line 7: Timestamp formatted
+- Line 8: Explorer link https://explorer.coti.io/tx/{hash}
+
+CRITICAL n8n Code node v2 syntax:
+- Static data: $getWorkflowStaticData('global') - NOT this.getWorkflowStaticData()
+- Input access: $input.first().json - NOT $json
+- Return format: MUST wrap in json property - return [{ json: { hasNew: false } }]
+- Multiple returns: return array.map(item => ({ json: { ... } }))
+
+Code requirements:
+- Use const/let not var
+- Use Number() for value conversion: Number(tx.value) / 1e18
+- Access nested properties safely: tx.from?.hash
+- Provide complete working JavaScript code only
 ```
 Replace `YOUR_WALLET_ADDRESS` with your actual COTI wallet address.
 
@@ -115,7 +152,8 @@ Workflow requirements:
 2. HTTP Request - GET https://mainnet.cotiscan.io/api/v2/addresses/YOUR_WALLET_ADDRESS/transactions
 3. Code Node - JavaScript that:
    - Tracks seen transactions using workflow static data (no duplicates)
-   - Detects new incoming/outgoing transactions for the wallet
+   - Silent first run: on initialization, store all current transaction hashes and return hasNew: false (no notifications)
+   - After first run: detect new incoming/outgoing transactions for the wallet
    - Handles multiple new transactions per poll
    - Formats message with: direction indicator, amount in COTI, truncated from/to addresses, block number, fee, timestamp, CotiScan explorer link
    - Returns hasNew flag for filtering
@@ -139,8 +177,23 @@ API response format:
 Wallet: YOUR_WALLET_ADDRESS
 
 Provide:
-1. Complete n8n workflow JSON that can be imported directly
+1. Complete n8n workflow JSON that can be imported directly (use n8n export format with nodes array and connections object)
 2. Instructions for adding Telegram credentials after import
+
+Critical n8n Code node v2 syntax requirements:
+- Get static data: $getWorkflowStaticData('global') - NOT this.getWorkflowStaticData()
+- Get input: $input.first().json - NOT $json or items[0].json (JavaScript Node)
+- Return format: return [{ json: { key: value } }] - objects MUST be wrapped in { json: { } }
+- Multiple items: return array.map(item => ({ json: { ... } }))
+
+Important n8n JSON structure requirements:
+- Root object must contain: name, nodes (array), connections (object), settings
+- Each node must have: id, name, type, position (array [x, y]), parameters, typeVersion
+- Node type values: n8n-nodes-base.scheduleTrigger, n8n-nodes-base.httpRequest, n8n-nodes-base.code, n8n-nodes-base.if, n8n-nodes-base.telegram
+- Connections format: { "Node Name": { "main": [[{ "node": "Next Node Name", "type": "main", "index": 0 }]] } }
+- IF node has two outputs: connections use index 0 for true branch, index 1 for false branch
+- Code node: use jsCode parameter, typeVersion 2
+- Telegram node: use chatId parameter, text parameter with expression {{ $json.message }}
 ```
 
 Replace `YOUR_WALLET_ADDRESS` with your actual COTI wallet address.

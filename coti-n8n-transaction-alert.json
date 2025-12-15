@@ -1,0 +1,175 @@
+{
+  "name": "TG-demo",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://mainnet.cotiscan.io/api/v2/addresses/0xAcfE0086C8d66FddDdaa288b86C61914b14CBD88/transactions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        176,
+        0
+      ],
+      "id": "521c42cb-3517-4ed3-9584-35560fe5aa22",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ec5caa3e-2aea-4c03-bd8a-0a923e84b389",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        784,
+        48
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code Node: Filter New Transactions & Format for Telegram\n\n// Get the response from HTTP Request\nconst response = $input.first().json;\n\n// Get workflow static data to track seen transactions\nconst staticData = $getWorkflowStaticData('global');\n\n// Initialize if first run\nif (!staticData.seenTxHashes) {\n  staticData.seenTxHashes = [];\n}\n\n// Your wallet address to monitor\nconst MY_WALLET = 'YOUR WALLET ADDRESS'.toLowerCase();\n\n// Extract transactions from the response\nconst txList = response.items || [];\n\n// Find new transactions\nconst newTransactions = [];\n\nfor (const tx of txList) {\n  const txHash = tx.hash;\n  \n  // Skip if we've already seen this transaction\n  if (staticData.seenTxHashes.includes(txHash)) {\n    continue;\n  }\n  \n  // Check if transaction involves our wallet\n  const fromAddress = tx.from?.hash?.toLowerCase() || '';\n  const toAddress = tx.to?.hash?.toLowerCase() || '';\n  \n  if (fromAddress === MY_WALLET || toAddress === MY_WALLET) {\n    newTransactions.push(tx);\n    staticData.seenTxHashes.push(txHash);\n  }\n}\n\n// Keep only last 500 hashes to prevent memory bloat\nif (staticData.seenTxHashes.length > 500) {\n  staticData.seenTxHashes = staticData.seenTxHashes.slice(-500);\n}\n\n// If no new transactions, return flag to skip Telegram\nif (newTransactions.length === 0) {\n  return [{\n    json: {\n      hasNew: false\n    }\n  }];\n}\n\n// Format each new transaction for Telegram\nreturn newTransactions.map(tx => {\n  const fromAddress = tx.from?.hash || 'Unknown';\n  const toAddress = tx.to?.hash || 'Unknown';\n  const isIncoming = toAddress.toLowerCase() === MY_WALLET;\n  \n  // Convert value from Wei to COTI (18 decimals)\n  const valueWei = BigInt(tx.value || '0');\n  const valueCoti = Number(valueWei) / 1e18;\n  \n  // Format timestamp\n  const timestamp = new Date(tx.timestamp).toLocaleString('en-US', {\n    dateStyle: 'medium',\n    timeStyle: 'short'\n  });\n  \n  // Calculate fee in COTI\n  const feeWei = BigInt(tx.fee?.value || '0');\n  const feeCoti = Number(feeWei) / 1e18;\n  \n  // Build Telegram message\n  const emoji = isIncoming ? '📥' : '📤';\n  const direction = isIncoming ? 'INCOMING' : 'OUTGOING';\n  const statusEmoji = tx.status === 'ok' ? '✅' : '❌';\n  \n  const message = `${emoji} *${direction} TRANSACTION* ${statusEmoji}\n\n💰 *Amount:* \\`${valueCoti.toFixed(4)} COTI\\`\n📤 *From:* \\`${fromAddress.slice(0, 8)}...${fromAddress.slice(-6)}\\`\n📥 *To:* \\`${toAddress.slice(0, 8)}...${toAddress.slice(-6)}\\`\n🧱 *Block:* \\`${tx.block_number}\\`\n⛽ *Fee:* \\`${feeCoti.toFixed(6)} COTI\\`\n⏰ *Time:* ${timestamp}\n\n🔗 [View on CotiScan](https://explorer.coti.io/tx/${tx.hash})`;\n\n  return {\n    json: {\n      hasNew: true,\n      message: message,\n      txHash: tx.hash,\n      isIncoming: isIncoming,\n      amount: valueCoti,\n      status: tx.status\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        160
+      ],
+      "id": "ef3934b6-14e4-4ac3-8d3f-45bc5c1233ec",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ecdb463c-5aeb-4fb8-9d96-85a61a35b78d",
+              "leftValue": "={{ $json.hasNew }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        160
+      ],
+      "id": "ef84d716-29eb-4804-8f87-85bd58689ee3",
+      "name": "If"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "82bfc09f-6b02-4b78-9f12-51485295987d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d526e999990f0e913e933b5f477cc22ebcb06977743652974f878a2f424468d2"
+  },
+  "id": "VfBPmeGAg8Big8kc",
+  "tags": []
+}

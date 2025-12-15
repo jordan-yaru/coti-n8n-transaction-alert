@@ -1,0 +1,128 @@
+{
+  "name": "COTI Wallet Transaction Notifier (Telegram)",
+  "settings": {},
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {
+        "rule": [
+          {
+            "unit": "minutes",
+            "value": 5
+          }
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "name": "Fetch Transactions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [250, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "https://mainnet.cotiscan.io/api/v2/addresses/YOUR_WALLET_ADDRESS/transactions",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Process Transactions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 0],
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\n\nconst wallet = 'YOUR_WALLET_ADDRESS'.toLowerCase();\nconst response = $input.first().json;\nconst items = response?.items || [];\n\nif (!staticData.seenTxs) {\n  staticData.seenTxs = {};\n  items.forEach(tx => {\n    staticData.seenTxs[tx.hash] = true;\n  });\n  return [{ json: { hasNew: false } }];\n}\n\nconst newTxs = [];\n\nfor (const tx of items) {\n  if (!staticData.seenTxs[tx.hash]) {\n    staticData.seenTxs[tx.hash] = true;\n    newTxs.push(tx);\n  }\n}\n\nif (newTxs.length === 0) {\n  return [{ json: { hasNew: false } }];\n}\n\nconst messages = newTxs.map(tx => {\n  const incoming = tx.to?.hash?.toLowerCase() === wallet;\n  const direction = incoming ? '⬇️ IN' : '⬆️ OUT';\n\n  const amount = Number(tx.value) / 1e18;\n  const fee = Number(tx.fee?.value || 0) / 1e18;\n\n  const from = tx.from?.hash || '';\n  const to = tx.to?.hash || '';\n\n  const short = (addr) => addr.slice(0, 6) + '...' + addr.slice(-4);\n\n  return `🔔 *COTI Transaction*\n\n${direction}\n\n💰 Amount: *${amount} COTI*\n👤 From: ${short(from)}\n🎯 To: ${short(to)}\n⛓ Block: ${tx.block_number}\n⛽ Fee: ${fee} COTI\n🕒 Time: ${tx.timestamp}\n🔗 https://mainnet.cotiscan.io/tx/${tx.hash}`;\n});\n\nreturn messages.map(message => ({\n  json: {\n    hasNew: true,\n    message\n  }\n}));"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Has New Transaction?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [780, 0],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasNew }}",
+              "operation": "isTrue"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "5",
+      "name": "Send Telegram Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1040, 0],
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "YOUR_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_AFTER_IMPORT",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Transactions": {
+      "main": [
+        [
+          {
+            "node": "Process Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Transactions": {
+      "main": [
+        [
+          {
+            "node": "Has New Transaction?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has New Transaction?": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  }
+}
