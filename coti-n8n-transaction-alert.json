@@ -4,7 +4,6 @@
     {
       "parameters": {
         "url": "https://mainnet.cotiscan.io/api/v2/addresses/YOUR_WALLET_ADDRESS/transactions",
-        "url": "https://mainnet.cotiscan.io/api/v2/addresses/YOUR_WALLET_ADDRESS/transactions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
